@@ -1,0 +1,169 @@
+type Query {
+    shows(titleFilter: String): [Show]
+    getUser(name: String!): UserDto
+    getAllUsers: [UserShow]
+    getBook(title: String!): BookDto
+    getAllBooks: [BookShow]
+    getRental(id: String!): RentalDto
+    getAllRentals: [RentalShow]
+    getReservation(id: String!): ReservationDto
+    getAllReservations: [ReservationShow]
+}
+type Show {
+    title: String
+    releaseYear: Int
+}
+
+input SubmittedShow {
+    title: String!
+    releaseYear: Int!
+}
+type Mutation {
+    addShow(show: SubmittedShow): Show
+    register(input: SubmittedUser!): UserDto
+    editUser(name: String!, input: SubmittedUser!): UserDto
+    deleteUser(name: String!): String
+    addBook(input: SubmittedBook!): BookDto
+    editBook(title: String!, input: SubmittedBook!): BookDto
+    deleteBook(title: String!): String
+    addRental(input: SubmittedRental!): RentalDto
+    editRental(id: String!, input: SubmittedRental!): RentalDto
+    deleteRental(id: String!): String
+    addReservation(input: SubmittedReservation!): ReservationDto
+    editReservation(id: String!, input: SubmittedReservation!): ReservationDto
+    deleteReservation(id: String!): String
+}
+type UserShow {
+    name: String
+    email: String
+    password: String
+    role: Role
+    membership_date: String
+    phone_number: String
+    address: String
+}
+
+type UserDto {
+    id: ID
+    name: String
+    email: String
+    password: String
+    role: String
+    membership_date: String
+    phone_number: String
+    address: String
+    created: String
+    modified: String
+}
+
+enum Role {
+    User
+    Librarian
+}
+
+input SubmittedUser {
+    name: String
+    email: String
+    password: String
+    role: String
+    membership_date: String
+    phone_number: String
+    address: String
+}
+
+type BookShow {
+    title: String
+    author: String
+    publisher: String
+    publication_year: Int
+    genre: String
+    description: String
+    user: String
+}
+
+type BookDto {
+    id: ID
+    user: String
+    title: String
+    author: String
+    publisher: String
+    publication_year: Int
+    genre: String
+    available_copies: Int
+    total_copies: Int
+    description: String
+    created: String
+    modified: String
+}
+
+input SubmittedBook {
+    title: String
+    author: String
+    publisher: String
+    publication_year: Int
+    genre: String
+    description: String
+    user: String
+}
+
+type RentalShow {
+    id: ID
+    rental_date: String
+    due_date: String
+    return_date: String
+    extended_times: Int
+    is_returned: Boolean
+    user: String
+    book: String
+}
+
+type RentalDto {
+    id: ID
+    user: String
+    book: String
+    rental_date: String
+    due_date: String
+    return_date: String
+    extended_times: Int
+    is_returned: Boolean
+    created: String
+    modified: String
+}
+
+input SubmittedRental {
+    user: String
+    book: String
+    rental_date: String
+    due_date: String
+    return_date: String
+    extended_times: Int
+    is_returned: Boolean
+}
+
+type ReservationShow {
+    id: ID
+    reservation_date: String
+    expiry_date: String
+    is_active: Boolean
+    user: String
+    book: String
+}
+
+type ReservationDto {
+    id: ID
+    reservation_date: String
+    expiry_date: String
+    is_active: Boolean
+    user: String
+    book: String
+    created: String
+    modified: String
+}
+
+input SubmittedReservation {
+    user: String
+    book: String
+    reservation_date: String
+    expiry_date: String
+    is_active: Boolean
+}

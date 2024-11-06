@@ -1,0 +1,19 @@
+services:
+  postgres:
+    container_name: postgres
+    image: postgres:latest
+    environment:
+      - POSTGRES_DB=test_book_library
+      - POSTGRES_PASSWORD=4592
+      - POSTGRES_USER=postgres
+    ports:
+      - 58441:5432
+  rabbitmq:
+    container_name: rabbitmq
+    image: rabbitmq:latest
+    environment:
+      - RABBITMQ_DEFAULT_PASS=4592
+      - RABBITMQ_DEFAULT_USER=goodline
+    ports:
+      - 15672
+      - 5672
