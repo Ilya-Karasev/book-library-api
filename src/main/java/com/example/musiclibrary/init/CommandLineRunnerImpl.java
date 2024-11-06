@@ -1,72 +1,61 @@
 package com.example.musiclibrary.init;
-import com.example.musiclibrary.dtos.PlayListDto;
-import com.example.musiclibrary.dtos.TrackDto;
+import com.example.musiclibrary.dtos.BookDto;
+import com.example.musiclibrary.dtos.RentalDto;
+import com.example.musiclibrary.dtos.ReservationDto;
 import com.example.musiclibrary.dtos.UserDto;
+import com.example.musiclibrary.rabbitmq.*;
 import com.example.musiclibrary.services.*;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 import java.io.IOException;
+import java.time.LocalDate;
+import java.util.concurrent.TimeUnit;
+
 @Component
 public class CommandLineRunnerImpl implements CommandLineRunner {
     @Autowired
     private UserService userService;
     @Autowired
-    private TrackService trackService;
+    private BookService bookService;
     @Autowired
-    private PlayListService playListService;
+    private RentalService rentalService;
     @Autowired
-    private TrackListService trackListService;
-    @Autowired
-    private SubscriptionService subscriptionService;
-    public CommandLineRunnerImpl(UserService userService, TrackService trackService, PlayListService playListService, TrackListService trackListService, SubscriptionService subscriptionService) {
+    private ReservationService reservationService;
+    public CommandLineRunnerImpl(UserService userService, BookService bookService, RentalService rentalService, ReservationService reservationService) {
         this.userService = userService;
-        this.trackService = trackService;
-        this.playListService = playListService;
-        this.trackListService = trackListService;
-        this.subscriptionService = subscriptionService;
+        this.bookService = bookService;
+        this.rentalService = rentalService;
+        this.reservationService = reservationService;
     }
+    @Autowired
+    private RabbitTemplate rabbitTemplate;
+    @Autowired
+    private RentalMessageReceiver rentalReceiver;
+    @Autowired
+    private ReservationMessageReceiver reservationReceiver;
+    @Autowired
+    private RegistrationMessageReceiver registrationReceiver;
     @Override
     public void run(String... args) throws Exception {
         seedData();
+        System.out.println("Запросы отправлены...");
+        rabbitTemplate.convertAndSend(RabbitMQConfig.topicExchangeName, "library.rental.queue", "Сообщение об аренде книги");
+        rentalReceiver.getLatch().await(10000, TimeUnit.MILLISECONDS);
+        rabbitTemplate.convertAndSend(RabbitMQConfig.topicExchangeName, "library.reservation.queue", "Сообщение о бронировании книги");
+        reservationReceiver.getLatch().await(10000, TimeUnit.MILLISECONDS);
+        rabbitTemplate.convertAndSend(RabbitMQConfig.topicExchangeName, "library.registration.queue", "Сообщение о регистрации");
+        registrationReceiver.getLatch().await(10000, TimeUnit.MILLISECONDS);
     }
-    private void seedData() throws IOException {
-        UserDto u1 = new UserDto("test_user_1", "12345");
-        UserDto u2 = new UserDto("test_user_2", "12345");
-        UserDto alt_u = new UserDto("test_user_3", "12345");
-        TrackDto t1 = new TrackDto("Zazie", "Kevin Macleod", "Ferret", "03:34", "Electronic");
-        TrackDto t2 = new TrackDto("Freestyler", "Bomfunk MC's", "In Stereo", "05:06", "Hip Hop");
-        TrackDto alt_t = new TrackDto("Corrosion", "NightHawk22", "Chemical Imbalance", "03:24", "Techno");
-        PlayListDto p1 = new PlayListDto("Плейлист 1", u1);
-        PlayListDto p2 = new PlayListDto("Плейлист 2", u2);
-        PlayListDto p3 = new PlayListDto("Плейлист 3", u2);
-        PlayListDto alt_p = new PlayListDto("Changed", u1);
-        u1 = userService.register(u1);
-        u2 = userService.register(u2);
-        t1 = trackService.addTrack(t1);
-        t2 = trackService.addTrack(t2);
-        userService
-                .getAllUsers()
-                .forEach(System.out::println);
-        trackService
-                .getAllTracks()
-                .forEach(System.out::println);
-        p1 = playListService.createPlaylist(p1, "test_user_1");
-        p2 = playListService.createPlaylist(p2, "test_user_2");
-        p3 = playListService.createPlaylist(p3, "test_user_2");
-        playListService
-                .getAllPlaylists()
-                .forEach(System.out::println);
-        System.out.println(userService.findUser("test_user_1"));
-        trackService.changeTrackInfo("Freestyler", "Bomfunk MC's", alt_t);
-        trackListService.addTrackToPlaylist("test_user_1","Плейлист 1", "Zazie", "Kevin Macleod");
-        trackListService.addTrackToPlaylist("test_user_2","Плейлист 2", "Corrosion", "NightHawk22");
-        subscriptionService.addSub("test_user_1", "Плейлист 1", "test_user_1");
-        subscriptionService.addSub("test_user_1", "Плейлист 2", "test_user_2");
-        subscriptionService.addSub("test_user_1", "Плейлист 2", "test_user_2");
-        subscriptionService.addSub("test_user_1", "Плейлист 3", "test_user_2");
-        System.out.println(playListService.getAllPlaylistsByUser("test_user_2"));
-        System.out.println(subscriptionService.getAllSubsByUser("test_user_1"));
-        System.out.println(trackListService.getAllTracksFromPlaylist("test_user_1", "Плейлист 1"));
+    private void seedData() throws IOException, InterruptedException {
+        UserDto librarian = userService.register(new UserDto("Anna Librarian", "anna@library.com", "LIBRARIAN", UserDto.Role.Librarian, LocalDate.of(2024, 1, 1), "8(800)555-35-35", null));
+        UserDto user = userService.register(new UserDto("John Doe", "johndoe@example.com", "USER_JD", UserDto.Role.User, LocalDate.of(2003, 8, 19), "8(999)696-96-96", "улица Образцова, д.9"));
+        BookDto book1 = bookService.addBook(new BookDto(librarian, "Effective Java", "Joshua Bloch", "Addison-Wesley", 2018, "Программирование", 3, 5, "A must-read for Java developers"), librarian.getName());
+        BookDto book2 = bookService.addBook(new BookDto(librarian, "Clean Code", "Robert C. Martin", "Prentice Hall", 2008,  "Программирование", 2, 4, "Guide to writing clean, maintainable code"), librarian.getName());
+        RentalDto rental = rentalService.addRental(new RentalDto(user, book1, LocalDate.of(2024, 9, 10), LocalDate.of(2024, 9, 20), null, 0, false), user.getName(), book1.getTitle());
+        ReservationDto reservation = reservationService.addReservation(new ReservationDto(user, book2, LocalDate.of(2024, 9, 12), LocalDate.of(2024, 9, 19), true), user.getName(), book2.getTitle());
+        System.out.println(rentalService.getAllRentals());
+        System.out.println(reservationService.getAllReservations());
     }
 }

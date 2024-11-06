@@ -1,37 +1,22 @@
-package com.example.musiclibrary.dtos;
-import jakarta.validation.constraints.*;
+package com.example.musiclibrary.dtos.show;
+import com.example.musiclibrary.dtos.ActionDto;
+import com.example.musiclibrary.dtos.UserDto;
 import org.springframework.hateoas.RepresentationModel;
-
 import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.Date;
 import java.util.List;
-import java.util.UUID;
-public class UserDto {
-    private UUID id;
+
+public class UserShow extends RepresentationModel<UserShow> {
     private String name;
     private String email;
     private String password;
-    public enum Role {
-        User(0), Librarian(1);
-        private final int roleNum;
-        Role(int roleNum) {
-            this.roleNum = roleNum;
-        }
-        public int getRoleNum() {
-            return roleNum;
-        }
-    }
-    private Role role;
+    private UserDto.Role role;
     private LocalDate membership_date;
     private String phone_number;
     private String address;
-    private List<RentalDto> rentals;
-    private List<ReservationDto> reservations;
-    private LocalDateTime created;
-    private LocalDateTime modified;
+    private List<RentalShow> rentals;
+    private List<ReservationShow> reservations;
     private List<ActionDto> actions;
-    public UserDto(String name, String email, String password, Role role, LocalDate membership_date, String phone_number, String address) {
+    public UserShow(String name, String email, String password, UserDto.Role role, LocalDate membership_date, String phone_number, String address) {
         this.name = name;
         this.email = email;
         this.password = password;
@@ -40,40 +25,30 @@ public class UserDto {
         this.phone_number = phone_number;
         this.address = address;
     }
-    public UserDto() {
+    public UserShow() {
     }
-    public UUID getId() {
-        return id;
-    }
-    public void setId(UUID id) {
-        this.id = id;
-    }
-    @NotNull(message = "Введите ФИО!")
     public String getName() {
         return name;
     }
     public void setName(String name) {
         this.name = name;
     }
-    @NotNull(message = "Введите электронную почту!")
     public String getEmail() {
         return email;
     }
     public void setEmail(String email) {
         this.email = email;
     }
-    @NotNull(message = "Введите пароль!")
     public String getPassword() {
         return password;
     }
     public void setPassword(String password) {
         this.password = password;
     }
-    @NotNull(message = "Выберите роль!")
-    public Role getRole() {
+    public UserDto.Role getRole() {
         return role;
     }
-    public void setRole(Role role) {
+    public void setRole(UserDto.Role role) {
         this.role = role;
     }
     public LocalDate getMembership_date() {
@@ -94,35 +69,27 @@ public class UserDto {
     public void setAddress(String address) {
         this.address = address;
     }
-    public List<RentalDto> getRentals() {
+    public List<RentalShow> getRentals() {
         return rentals;
     }
-    public void setRentals(List<RentalDto> rentals) {
+    public void setRentals(List<RentalShow> rentals) {
         this.rentals = rentals;
     }
-    public List<ReservationDto> getReservations() {
+    public List<ReservationShow> getReservations() {
         return reservations;
     }
-
-    public void setReservations(List<ReservationDto> reservations) {
+    public void setReservations(List<ReservationShow> reservations) {
         this.reservations = reservations;
     }
-    public LocalDateTime getCreated() {
-        return created;
+    public List<ActionDto> getActions() {
+        return actions;
     }
-    public void setCreated(LocalDateTime created) {
-        this.created = created;
-    }
-    public LocalDateTime getModified() {
-        return modified;
-    }
-    public void setModified(LocalDateTime modified) {
-        this.modified = modified;
+    public void setActions(List<ActionDto> actions) {
+        this.actions = actions;
     }
     @Override
     public String toString() {
         return "User {" +
-                "user_id: " + id + ", " +
                 "name: " + name + ", " +
                 "email: " + email + ", " +
                 "password: " + password + ", " +
@@ -131,8 +98,6 @@ public class UserDto {
                 "phone_number: " + phone_number + ", " +
                 "address: " + address + ", " +
                 "rentals: " + rentals + ", " +
-                "reservations: " + reservations + ", " +
-                "created: " + created + ", " +
-                "modified: " + modified + "}";
+                "reservations: " + reservations + "}";
     }
 }
