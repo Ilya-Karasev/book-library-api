@@ -1,7 +1,5 @@
 package com.example.musiclibrary.controllers;
-import com.example.musiclibrary.dtos.ActionDto;
-import com.example.musiclibrary.dtos.BookDto;
-import com.example.musiclibrary.dtos.UserDto;
+import com.example.musiclibrary.dtos.*;
 import com.example.musiclibrary.dtos.show.BookShow;
 import com.example.musiclibrary.dtos.show.UserShow;
 import com.example.musiclibrary.services.BookService;
@@ -13,10 +11,11 @@ import org.springframework.hateoas.server.mvc.WebMvcLinkBuilder;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 @RestController
-public class BookController {
+public class BookController implements BookApi {
     @Autowired
     private UserService userService;
     @Autowired
@@ -42,7 +41,7 @@ public class BookController {
         return ResponseEntity.ok(books);
     }
     @PostMapping("/books/add")
-    public ResponseEntity<BookShow> newBook(@RequestBody BookDto newBook) throws Throwable {
+    public ResponseEntity<BookShow> addBook(@RequestBody BookDto newBook) throws Throwable {
         BookDto book = bookService.addBook(newBook, newBook.getUser().getName());
         BookShow b = bookService.findBook(book.getTitle()).orElseThrow(() -> new NotFoundException(book.getTitle()));
         addLinks(b);
@@ -64,12 +63,8 @@ public class BookController {
         book.setUser(u);
         return ResponseEntity.ok(book);
     }
-    @GetMapping("/books/{id}")
-    public ResponseEntity<BookDto> getBook(@PathVariable UUID id) {
-        return ResponseEntity.ok(new BookDto());
-    }
     @PutMapping("/books/edit/{title}")
-    ResponseEntity<BookShow> editBook(@PathVariable String title, @RequestBody BookDto book) throws Throwable {
+    public ResponseEntity<BookShow> editBook(@PathVariable String title, @RequestBody BookDto book) throws Throwable {
         bookService.editBook(title, book);
         BookShow b = bookService.findBook(book.getTitle()).orElseThrow(() -> new NotFoundException(book.getTitle()));
         addLinks(b);
@@ -81,7 +76,7 @@ public class BookController {
         return ResponseEntity.ok(b);
     }
     @DeleteMapping("/books/delete/{title}")
-    public Link deletebook(@PathVariable String title) throws Throwable {
+    public Link deleteBook(@PathVariable String title) throws Throwable {
         bookService.deleteBook(title);
         return WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(BookController.class).all()).withRel("all-books");
     }
@@ -110,7 +105,7 @@ public class BookController {
 
         ActionDto deleteAction = new ActionDto(
                 WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(BookController.class)
-                        .deletebook(book.getTitle())).withRel("delete").toUri().toString(),
+                        .deleteBook(book.getTitle())).withRel("delete").toUri().toString(),
                 "DELETE"
         );
         actions.add(deleteAction);

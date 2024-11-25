@@ -19,7 +19,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 @DgsComponent
-public class ReservationDataFetcher {
+public class ReservationDataFetcher implements ReservationFetcherApi {
     @Autowired
     private UserService userService;
     @Autowired

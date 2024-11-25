@@ -12,6 +12,7 @@ public class BookShow extends RepresentationModel<BookShow> {
     private Integer publication_year;
     private String genre;
     private String description;
+    private Integer available_copies;
     private List<ActionDto> actions;
     private UserShow user;
     public BookShow(String title, String author, String publisher, Integer publication_year, String genre, Integer available_copies, Integer total_copies, String description, UserShow user) {
@@ -21,6 +22,7 @@ public class BookShow extends RepresentationModel<BookShow> {
         this.publication_year = publication_year;
         this.genre = genre;
         this.description = description;
+        this.available_copies = available_copies;
         this.user = user;
     }
     public BookShow() {
@@ -67,6 +69,12 @@ public class BookShow extends RepresentationModel<BookShow> {
     public void setDescription(String description) {
         this.description = description;
     }
+    public Integer getAvailable_copies() {
+        return available_copies;
+    }
+    public void setAvailable_copies(Integer available_copies) {
+        this.available_copies = available_copies;
+    }
     public List<ActionDto> getActions() {
         return actions;
     }
@@ -82,6 +90,7 @@ public class BookShow extends RepresentationModel<BookShow> {
                 "publisher: " + publisher + ", " +
                 "publication_year: " + publication_year + ", " +
                 "genre: " + genre + ", " +
-                "description: " + description + "}";
+                "description: " + description + ", " +
+                "available_copies: " + available_copies + "}";
     }
 }

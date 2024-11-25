@@ -5,9 +5,7 @@ import com.example.musiclibrary.dtos.show.RentalShow;
 import com.example.musiclibrary.models.Book;
 import com.example.musiclibrary.models.Rental;
 import com.example.musiclibrary.models.User;
-import com.example.musiclibrary.rabbitmq.RabbitMQConfig;
-import com.example.musiclibrary.rabbitmq.RegistrationMessageReceiver;
-import com.example.musiclibrary.rabbitmq.RentalMessageReceiver;
+import com.example.musiclibrary.rabbitmq.*;
 import com.example.musiclibrary.repositories.BookRepository;
 import com.example.musiclibrary.repositories.RentalRepository;
 import com.example.musiclibrary.repositories.UserRepository;
@@ -35,59 +33,76 @@ public class RentalServiceImpl implements RentalService {
     @Autowired
     private RabbitTemplate rabbitTemplate;
     @Autowired
-    private RentalMessageReceiver rentalReceiver;
+    private RentalMessageSender rentalSender;
     @Override
     public RentalDto addRental(RentalDto rental, String user, String book) throws InterruptedException {
+        Book b = bookRepository.findByTitle(book).orElseThrow(() -> new RuntimeException("Книга не найдена"));
+
+        if (b.getAvailable_copies() == 0) {
+            rentalSender.sendRentalMessage("Аренда не оформлена: нет доступных копий книги " + b.getTitle());
+            return null;
+        }
+
+        // Уменьшаем количество доступных копий
+        b.setAvailable_copies(b.getAvailable_copies() - 1);
+        bookRepository.save(b);
+
         Rental r = modelMapper.map(rental, Rental.class);
-        User u = userRepository.findByName(user).get();
-        Book b = bookRepository.findByTitle(book).get();
+        User u = userRepository.findByName(user).orElseThrow(() -> new RuntimeException("Пользователь не найден"));
         r.setUser(u);
         r.setBook(b);
-        rabbitTemplate.convertAndSend(RabbitMQConfig.topicExchangeName, "library.rental.queue", "Аренда книги " + b.getTitle() + " для пользователя " + u.getName() + " была оформлена");
-        rentalReceiver.getLatch().await(10000, TimeUnit.MILLISECONDS);
+
+        rentalSender.sendRentalMessage("Аренда книги " + b.getTitle() + " для пользователя " + u.getName() + " была оформлена");
         return modelMapper.map(rentalRepository.save(r), RentalDto.class);
     }
 
     @Override
     public Optional<RentalShow> findRental(UUID id) throws InterruptedException {
-        rabbitTemplate.convertAndSend(RabbitMQConfig.topicExchangeName, "library.rental.queue", "Поиск аренды книги (" + modelMapper.map(rentalRepository.findById(id), RentalShow.class).getId() + ")");
-        rentalReceiver.getLatch().await(10000, TimeUnit.MILLISECONDS);
+        rentalSender.sendRentalMessage("Поиск аренды книги (" + modelMapper.map(rentalRepository.findById(id), RentalShow.class).getId() + ")");
         return Optional.ofNullable(modelMapper.map(rentalRepository.findById(id), RentalShow.class));
     }
 
     @Override
     public Optional<RentalDto> findRentalDto(UUID id) throws InterruptedException {
-        rabbitTemplate.convertAndSend(RabbitMQConfig.topicExchangeName, "library.rental.queue", "Поиск DTO-объекта аренды книги (" + modelMapper.map(rentalRepository.findById(id), RentalDto.class).getId() + ")");
-        rentalReceiver.getLatch().await(10000, TimeUnit.MILLISECONDS);
+        rentalSender.sendRentalMessage("Поиск DTO-объекта аренды книги (" + modelMapper.map(rentalRepository.findById(id), RentalDto.class).getId() + ")");
         return Optional.ofNullable(modelMapper.map(rentalRepository.findById(id), RentalDto.class));
     }
 
     @Override
     public List<RentalShow> getAllRentals() throws InterruptedException {
-        rabbitTemplate.convertAndSend(RabbitMQConfig.topicExchangeName, "library.rental.queue", "Вывод всех записей об арендах книги");
-        rentalReceiver.getLatch().await(10000, TimeUnit.MILLISECONDS);
+        rentalSender.sendRentalMessage("Вывод всех записей об арендах книги");
         return rentalRepository.findAll().stream().map((r) -> modelMapper.map(r, RentalShow.class)).collect(Collectors.toList());
     }
 
     @Override
     public Optional<RentalDto> editRental(UUID id, RentalDto rental) throws InterruptedException {
-        RentalDto r = modelMapper.map(rentalRepository.findById(id), RentalDto.class);
+        Rental r = rentalRepository.findById(id).orElseThrow(() -> new RuntimeException("Аренда не найдена"));
+        boolean wasNotReturned = (r.getIs_returned() == null || !r.getIs_returned());
+
+        // Обновляем данные аренды
         r.setRental_date(rental.getRental_date());
         r.setDue_date(rental.getDue_date());
         r.setExtended_times(rental.getExtended_times());
         r.setIs_returned(rental.getIs_returned());
         r.setReturn_date(rental.getReturn_date());
         r.setModified(LocalDateTime.now());
-        rentalRepository.save(modelMapper.map(r, Rental.class));
-        rabbitTemplate.convertAndSend(RabbitMQConfig.topicExchangeName, "library.rental.queue", "Редактирование записи аренды книги (" + modelMapper.map(rentalRepository.findById(id), RentalDto.class).getId() + ")");
-        rentalReceiver.getLatch().await(10000, TimeUnit.MILLISECONDS);
-        return Optional.ofNullable(modelMapper.map(rentalRepository.findById(id), RentalDto.class));
+
+        // Если книга была не возвращена и теперь возвращена, увеличиваем количество доступных копий
+        if (wasNotReturned && Boolean.TRUE.equals(rental.getIs_returned())) {
+            Book b = r.getBook();
+            b.setAvailable_copies(b.getAvailable_copies() + 1);
+            bookRepository.save(b);
+            rentalSender.sendRentalMessage("Книга " + b.getTitle() + " была возвращена; аренда " + r.getId() + " больше не активна");
+        }
+
+        rentalRepository.save(r);
+        rentalSender.sendRentalMessage("Редактирование записи аренды книги (" + r.getId() + ")");
+        return Optional.of(modelMapper.map(r, RentalDto.class));
     }
 
     @Override
     public void deleteRental(UUID id) throws InterruptedException {
-        rabbitTemplate.convertAndSend(RabbitMQConfig.topicExchangeName, "library.rental.queue", "Удаление записи аренды книги (" + modelMapper.map(rentalRepository.findById(id), RentalShow.class).getId() + ")");
-        rentalReceiver.getLatch().await(10000, TimeUnit.MILLISECONDS);
+        rentalSender.sendRentalMessage("Удаление записи аренды книги (" + modelMapper.map(rentalRepository.findById(id), RentalShow.class).getId() + ")");
         rentalRepository.delete(modelMapper.map(rentalRepository.findById(id), Rental.class));
     }
 }

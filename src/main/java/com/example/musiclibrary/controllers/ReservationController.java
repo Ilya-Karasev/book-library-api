@@ -21,7 +21,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-public class ReservationController {
+public class ReservationController implements ReservationApi {
     @Autowired
     private UserService userService;
     @Autowired
@@ -58,7 +58,7 @@ public class ReservationController {
         return ResponseEntity.ok(reservations);
     }
     @PostMapping("/reservations/add")
-    ResponseEntity<ReservationShow> newReservation(@RequestBody ReservationDto newReservation) throws Throwable {
+    public ResponseEntity<ReservationShow> newReservation(@RequestBody ReservationDto newReservation) throws Throwable {
         ReservationDto reservation = reservationService.addReservation(newReservation, newReservation.getUser().getName(), newReservation.getBook().getTitle());
         ReservationShow r = reservationService.findReservation(reservation.getId()).orElseThrow(() -> new NotFoundException(reservation.getId().toString()));
         addLinks(r);
@@ -78,7 +78,7 @@ public class ReservationController {
         return ResponseEntity.ok(r);
     }
     @GetMapping("/reservations/info/{id}")
-    ResponseEntity<ReservationShow> findReservation(@PathVariable UUID id) throws Throwable {
+    public ResponseEntity<ReservationShow> findReservation(@PathVariable UUID id) throws Throwable {
         ReservationShow reservation = reservationService.findReservation(id).orElseThrow((() -> new NotFoundException(id.toString())));
         addLinks(reservation);
         addActions(reservation);
@@ -97,7 +97,7 @@ public class ReservationController {
         return ResponseEntity.ok(reservation);
     }
     @PutMapping("/reservations/edit/{id}")
-    ResponseEntity<ReservationShow> editReservation(@PathVariable UUID id, @RequestBody ReservationDto reservation) throws Throwable {
+    public ResponseEntity<ReservationShow> editReservation(@PathVariable UUID id, @RequestBody ReservationDto reservation) throws Throwable {
         reservationService.editReservation(id, reservation);
         ReservationShow r = reservationService.findReservation(id).orElseThrow((() -> new NotFoundException(id.toString())));
         addLinks(r);
@@ -117,7 +117,7 @@ public class ReservationController {
         return ResponseEntity.ok(r);
     }
     @DeleteMapping("/reservations/delete/{id}")
-    Link deleteReservation(@PathVariable UUID id) throws Throwable {
+    public Link deleteReservation(@PathVariable UUID id) throws Throwable {
         reservationService.deleteReservation(id);
         return WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(ReservationController.class).all()).withRel("all-reservations");
     }
@@ -182,7 +182,7 @@ public class ReservationController {
 
         ActionDto deleteAction = new ActionDto(
                 WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(BookController.class)
-                        .deletebook(book.getTitle())).withRel("delete").toUri().toString(),
+                        .deleteBook(book.getTitle())).withRel("delete").toUri().toString(),
                 "DELETE"
         );
         actions.add(deleteAction);

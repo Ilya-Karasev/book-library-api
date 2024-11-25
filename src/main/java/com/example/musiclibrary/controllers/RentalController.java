@@ -19,7 +19,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-public class RentalController {
+public class RentalController implements RentalApi {
     @Autowired
     private UserService userService;
     @Autowired
@@ -56,7 +56,7 @@ public class RentalController {
         return ResponseEntity.ok(rentals);
     }
     @PostMapping("/rentals/add")
-    ResponseEntity<RentalShow> newRental(@RequestBody RentalDto newRental) throws Throwable {
+    public ResponseEntity<RentalShow> newRental(@RequestBody RentalDto newRental) throws Throwable {
         RentalDto rental = rentalService.addRental(newRental, newRental.getUser().getName(), newRental.getBook().getTitle());
         RentalShow r = rentalService.findRental(rental.getId()).orElseThrow(() -> new NotFoundException(rental.getId().toString()));
         addLinks(r);
@@ -76,7 +76,7 @@ public class RentalController {
         return ResponseEntity.ok(r);
     }
     @GetMapping("/rentals/info/{id}")
-    ResponseEntity<RentalShow> findRental(@PathVariable UUID id) throws Throwable {
+    public ResponseEntity<RentalShow> findRental(@PathVariable UUID id) throws Throwable {
         RentalShow rental = rentalService.findRental(id).orElseThrow((() -> new NotFoundException(id.toString())));
         addLinks(rental);
         addActions(rental);
@@ -95,7 +95,7 @@ public class RentalController {
         return ResponseEntity.ok(rental);
     }
     @PutMapping("/rentals/edit/{id}")
-    ResponseEntity<RentalShow> editRental(@PathVariable UUID id, @RequestBody RentalDto rental) throws Throwable {
+    public ResponseEntity<RentalShow> editRental(@PathVariable UUID id, @RequestBody RentalDto rental) throws Throwable {
         rentalService.editRental(id, rental);
         RentalShow r = rentalService.findRental(id).orElseThrow((() -> new NotFoundException(id.toString())));
         addLinks(r);
@@ -116,7 +116,7 @@ public class RentalController {
     }
 
     @DeleteMapping("/rentals/{id}")
-    Link deleteRental(@PathVariable UUID id) throws Throwable {
+    public Link deleteRental(@PathVariable UUID id) throws Throwable {
         rentalService.deleteRental(id);
         return WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(RentalController.class).all()).withRel("all-rentals");
     }
@@ -181,7 +181,7 @@ public class RentalController {
 
         ActionDto deleteAction = new ActionDto(
                 WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(BookController.class)
-                        .deletebook(book.getTitle())).withRel("delete").toUri().toString(),
+                        .deleteBook(book.getTitle())).withRel("delete").toUri().toString(),
                 "DELETE"
         );
         actions.add(deleteAction);

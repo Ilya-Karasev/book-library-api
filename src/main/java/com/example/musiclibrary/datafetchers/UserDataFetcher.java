@@ -7,13 +7,14 @@ import com.netflix.graphql.dgs.*;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
 import static java.util.Optional.ofNullable;
 
 @DgsComponent
-public class UserDataFetcher {
+public class UserDataFetcher implements UserFetcherApi {
     @Autowired
     private UserService userService;
     @Autowired
@@ -65,6 +66,7 @@ public class UserDataFetcher {
         if (input.phone_number() != null && !input.phone_number().isEmpty()) {
             u.setPhone_number(input.phone_number());
         }
+        u.setModified(LocalDateTime.now());
         return userService.editUser(name, u).orElse(null);
     }
 

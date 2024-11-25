@@ -6,9 +6,7 @@ import com.example.musiclibrary.dtos.show.ReservationShow;
 import com.example.musiclibrary.models.Book;
 import com.example.musiclibrary.models.Reservation;
 import com.example.musiclibrary.models.User;
-import com.example.musiclibrary.rabbitmq.RabbitMQConfig;
-import com.example.musiclibrary.rabbitmq.RentalMessageReceiver;
-import com.example.musiclibrary.rabbitmq.ReservationMessageReceiver;
+import com.example.musiclibrary.rabbitmq.*;
 import com.example.musiclibrary.repositories.BookRepository;
 import com.example.musiclibrary.repositories.ReservationRepository;
 import com.example.musiclibrary.repositories.UserRepository;
@@ -35,56 +33,73 @@ public class ReservationServiceImpl implements ReservationService {
     @Autowired
     private RabbitTemplate rabbitTemplate;
     @Autowired
-    private ReservationMessageReceiver reservationReceiver;
+    private ReservationMessageSender reservationSender;
     @Override
     public ReservationDto addReservation(ReservationDto reserv, String user, String book) throws InterruptedException {
+        Book b = bookRepository.findByTitle(book).orElseThrow(() -> new RuntimeException("Книга не найдена"));
+
+        if (b.getAvailable_copies() == 0) {
+            reservationSender.sendReservationMessage("Бронирование не оформлено: нет доступных копий книги " + b.getTitle());
+            return null;
+        }
+
+        // Уменьшаем количество доступных копий
+        b.setAvailable_copies(b.getAvailable_copies() - 1);
+        bookRepository.save(b);
+
         Reservation r = modelMapper.map(reserv, Reservation.class);
-        User u = userRepository.findByName(user).get();
-        Book b = bookRepository.findByTitle(book).get();
+        User u = userRepository.findByName(user).orElseThrow(() -> new RuntimeException("Пользователь не найден"));
         r.setUser(u);
         r.setBook(b);
-        rabbitTemplate.convertAndSend(RabbitMQConfig.topicExchangeName, "library.reservation.queue", "Бронирование книги " + b.getTitle() + " для пользователя " + u.getName() + " было оформлено");
-        reservationReceiver.getLatch().await(10000, TimeUnit.MILLISECONDS);
+
+        reservationSender.sendReservationMessage("Бронирование книги " + b.getTitle() + " для пользователя " + u.getName() + " было оформлено");
         return modelMapper.map(reservationRepository.save(r), ReservationDto.class);
     }
 
     @Override
     public Optional<ReservationShow> findReservation(UUID id) throws InterruptedException {
-        rabbitTemplate.convertAndSend(RabbitMQConfig.topicExchangeName, "library.reservation.queue", "Поиск бронирования книги (" + modelMapper.map(reservationRepository.findById(id), ReservationShow.class).getId() + ")");
-        reservationReceiver.getLatch().await(10000, TimeUnit.MILLISECONDS);
+        reservationSender.sendReservationMessage("Поиск бронирования книги (" + modelMapper.map(reservationRepository.findById(id), ReservationShow.class).getId() + ")");
         return Optional.ofNullable(modelMapper.map(reservationRepository.findById(id), ReservationShow.class));
     }
 
     @Override
     public Optional<ReservationDto> findReservationDto(UUID id) throws InterruptedException {
-        rabbitTemplate.convertAndSend(RabbitMQConfig.topicExchangeName, "library.reservation.queue", "Поиск DTO-объекта аренды книги (" + modelMapper.map(reservationRepository.findById(id), ReservationDto.class).getId() + ")");
-        reservationReceiver.getLatch().await(10000, TimeUnit.MILLISECONDS);
+        reservationSender.sendReservationMessage("Поиск DTO-объекта аренды книги (" + modelMapper.map(reservationRepository.findById(id), ReservationDto.class).getId() + ")");
         return Optional.ofNullable(modelMapper.map(reservationRepository.findById(id), ReservationDto.class));
     }
 
     @Override
     public List<ReservationShow> getAllReservations() throws InterruptedException {
-        rabbitTemplate.convertAndSend(RabbitMQConfig.topicExchangeName, "library.reservation.queue", "Вывод всех записей о бронировании книги");
-        reservationReceiver.getLatch().await(10000, TimeUnit.MILLISECONDS);
+        reservationSender.sendReservationMessage("Вывод всех записей о бронировании книги");
         return reservationRepository.findAll().stream().map((r) -> modelMapper.map(r, ReservationShow.class)).collect(Collectors.toList());
     }
 
     @Override
     public Optional<ReservationDto> editReservation(UUID id, ReservationDto reserv) throws InterruptedException {
-        ReservationDto r = modelMapper.map(reservationRepository.findById(id), ReservationDto.class);
+        Reservation r = reservationRepository.findById(id).orElseThrow(() -> new RuntimeException("Бронирование не найдено"));
+        boolean wasActive = Boolean.TRUE.equals(r.getIs_active());
+
+        // Обновляем данные бронирования
         r.setReservation_date(reserv.getReservation_date());
         r.setExpiry_date(reserv.getExpiry_date());
         r.setIs_active(reserv.getIs_active());
-        reservationRepository.save(modelMapper.map(r, Reservation.class));
-        rabbitTemplate.convertAndSend(RabbitMQConfig.topicExchangeName, "library.reservation.queue", "Редактирование записи бронирования книги (" + modelMapper.map(reservationRepository.findById(id), ReservationDto.class).getId() + ")");
-        reservationReceiver.getLatch().await(10000, TimeUnit.MILLISECONDS);
-        return Optional.ofNullable(modelMapper.map(reservationRepository.findById(id), ReservationDto.class));
+
+        // Если бронирование было активно и теперь стало неактивным, увеличиваем количество доступных копий
+        if (wasActive && Boolean.FALSE.equals(reserv.getIs_active())) {
+            Book b = r.getBook();
+            b.setAvailable_copies(b.getAvailable_copies() + 1);
+            bookRepository.save(b);
+            reservationSender.sendReservationMessage("Бронирование книги " + r.getId() + " больше не активно");
+        }
+
+        reservationRepository.save(r);
+        reservationSender.sendReservationMessage("Редактирование записи бронирования книги (" + r.getId() + ")");
+        return Optional.of(modelMapper.map(r, ReservationDto.class));
     }
 
     @Override
     public void deleteReservation(UUID id) throws InterruptedException {
-        rabbitTemplate.convertAndSend(RabbitMQConfig.topicExchangeName, "library.rental.queue", "Удаление записи бронирования книги (" + modelMapper.map(reservationRepository.findById(id), ReservationShow.class).getId() + ")");
-        reservationReceiver.getLatch().await(10000, TimeUnit.MILLISECONDS);
+        reservationSender.sendReservationMessage("Удаление записи бронирования книги (" + modelMapper.map(reservationRepository.findById(id), ReservationShow.class).getId() + ")");
         reservationRepository.delete(modelMapper.map(reservationRepository.findById(id), Reservation.class));
     }
 }

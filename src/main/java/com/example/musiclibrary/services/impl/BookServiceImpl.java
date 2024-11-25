@@ -5,10 +5,7 @@ import com.example.musiclibrary.dtos.UserDto;
 import com.example.musiclibrary.dtos.show.BookShow;
 import com.example.musiclibrary.models.Book;
 import com.example.musiclibrary.models.User;
-import com.example.musiclibrary.rabbitmq.BookMessageReceiver;
-import com.example.musiclibrary.rabbitmq.RabbitMQConfig;
-import com.example.musiclibrary.rabbitmq.RegistrationMessageReceiver;
-import com.example.musiclibrary.rabbitmq.UserMessageReceiver;
+import com.example.musiclibrary.rabbitmq.*;
 import com.example.musiclibrary.repositories.BookRepository;
 import com.example.musiclibrary.repositories.UserRepository;
 import com.example.musiclibrary.services.BookService;
@@ -32,7 +29,7 @@ public class BookServiceImpl implements BookService {
     @Autowired
     private RabbitTemplate rabbitTemplate;
     @Autowired
-    private BookMessageReceiver bookReceiver;
+    private BookMessageSender bookSender;
     @Override
     public BookDto addBook(BookDto book, String user) throws InterruptedException {
         if (!bookRepository.existsByTitle(book.getTitle())) {
@@ -41,30 +38,26 @@ public class BookServiceImpl implements BookService {
             b.setUser(u);
             b.setCreated(LocalDateTime.now());
             b.setModified(LocalDateTime.now());
-            rabbitTemplate.convertAndSend(RabbitMQConfig.topicExchangeName, "library.book.queue", "Книга " + b.getTitle() + " был зарегистрирована");
-            bookReceiver.getLatch().await(10000, TimeUnit.MILLISECONDS);
+            bookSender.sendBookMessage("Книга " + b.getTitle() + " был зарегистрирована");
             return modelMapper.map(bookRepository.save(b), BookDto.class);
         } else return null;
     }
 
     @Override
     public Optional<BookShow> findBook(String title) throws InterruptedException {
-        rabbitTemplate.convertAndSend(RabbitMQConfig.topicExchangeName, "library.book.queue", "Поиск книги" + title + "(" + modelMapper.map(bookRepository.findByTitle(title), BookDto.class).getId() + ")");
-        bookReceiver.getLatch().await(10000, TimeUnit.MILLISECONDS);
+        bookSender.sendBookMessage("Поиск книги " + title + " (" + modelMapper.map(bookRepository.findByTitle(title), BookDto.class).getId() + ")");
         return Optional.ofNullable(modelMapper.map(bookRepository.findByTitle(title), BookShow.class));
     }
 
     @Override
     public Optional<BookDto> findBookDto(String title) throws InterruptedException {
-        rabbitTemplate.convertAndSend(RabbitMQConfig.topicExchangeName, "library.book.queue", "Поиск DTO-объекта книги (" + modelMapper.map(bookRepository.findByTitle(title), BookDto.class).getId() + ")");
-        bookReceiver.getLatch().await(10000, TimeUnit.MILLISECONDS);
+        bookSender.sendBookMessage("Поиск DTO-объекта книги (" + modelMapper.map(bookRepository.findByTitle(title), BookDto.class).getId() + ")");
         return Optional.ofNullable(modelMapper.map(bookRepository.findByTitle(title), BookDto.class));
     }
 
     @Override
     public List<BookShow> getAllBooks() throws InterruptedException {
-        rabbitTemplate.convertAndSend(RabbitMQConfig.topicExchangeName, "library.book.queue", "Вывод всех записей о книгах");
-        bookReceiver.getLatch().await(10000, TimeUnit.MILLISECONDS);
+        bookSender.sendBookMessage("Вывод всех записей о книгах");
         return bookRepository.findAll().stream().map((b) -> modelMapper.map(b, BookShow.class)).collect(Collectors.toList());
     }
 
@@ -81,15 +74,13 @@ public class BookServiceImpl implements BookService {
         b.setTotal_copies(book.getTotal_copies());
         b.setModified(LocalDateTime.now());
         bookRepository.save(modelMapper.map(b, Book.class));
-        rabbitTemplate.convertAndSend(RabbitMQConfig.topicExchangeName, "library.book.queue", "Редактирование записи книги (" + modelMapper.map(bookRepository.findByTitle(title), BookDto.class).getId() + ")");
-        bookReceiver.getLatch().await(10000, TimeUnit.MILLISECONDS);
+        bookSender.sendBookMessage("Редактирование записи книги (" + modelMapper.map(bookRepository.findByTitle(title), BookDto.class).getId() + ")");
         return Optional.ofNullable(modelMapper.map(bookRepository.findByTitle(b.getTitle()), BookDto.class));
     }
 
     @Override
     public void deleteBook(String title) throws InterruptedException {
-        rabbitTemplate.convertAndSend(RabbitMQConfig.topicExchangeName, "library.book.queue", "Книга " + title + "(" + modelMapper.map(bookRepository.findByTitle(title), Book.class).getId() + " был удалена");
-        bookReceiver.getLatch().await(10000, TimeUnit.MILLISECONDS);
+        bookSender.sendBookMessage("Книга " + title + " (" + modelMapper.map(bookRepository.findByTitle(title), Book.class).getId() + " был удалена");
         bookRepository.delete(modelMapper.map(bookRepository.findByTitle(title), Book.class));
     }
 }

@@ -22,7 +22,7 @@ import java.util.UUID;
 import static java.util.Optional.ofNullable;
 
 @DgsComponent
-public class RentalDataFetcher {
+public class RentalDataFetcher implements RentalFetcherApi {
     @Autowired
     private UserService userService;
     @Autowired

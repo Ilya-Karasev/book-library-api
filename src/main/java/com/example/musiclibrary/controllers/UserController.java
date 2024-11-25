@@ -13,7 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 @RestController
-public class UserController {
+public class UserController implements UserApi {
     private final UserService userService;
     private final ModelMapper modelMapper;
     @Autowired
@@ -44,10 +44,6 @@ public class UserController {
         addUserLinks(user);
         addActions(user);
         return ResponseEntity.ok(user);
-    }
-    @GetMapping("/users/{id}")
-    public ResponseEntity<UserDto> getUser(@PathVariable UUID id) {
-        return ResponseEntity.ok(new UserDto());
     }
     @PutMapping("/users/edit/{name}")
     public ResponseEntity<UserShow> editUser(@PathVariable String name, @RequestBody UserDto user) throws InterruptedException {

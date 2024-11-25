@@ -11,11 +11,13 @@ import com.netflix.graphql.dgs.DgsQuery;
 import com.netflix.graphql.dgs.InputArgument;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
 @DgsComponent
-public class BookDataFetcher {
+public class BookDataFetcher implements BookFetcherApi {
     @Autowired
     private UserService userService;
     @Autowired
@@ -68,6 +70,7 @@ public class BookDataFetcher {
         if (input.author() != null && !input.author().isEmpty()) {
             b.setAuthor(input.author());
         }
+        b.setModified(LocalDateTime.now());
         return bookService.editBook(title, b).orElse(null);
     }
 
