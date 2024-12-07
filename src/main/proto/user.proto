@@ -4,6 +4,8 @@ package user;
 
 option java_package = "com.example.musiclibrary";
 option java_outer_classname = "LibraryProto";
+option java_multiple_files = true;
+option optimize_for= SPEED;
 
 import "google/protobuf/empty.proto";
 

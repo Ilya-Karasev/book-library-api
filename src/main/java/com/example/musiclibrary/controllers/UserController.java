@@ -13,7 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 @RestController
-public class UserController implements UserApi {
+public class UserController {
     private final UserService userService;
     private final ModelMapper modelMapper;
     @Autowired

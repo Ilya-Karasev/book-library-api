@@ -15,7 +15,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 @RestController
-public class BookController implements BookApi {
+public class BookController {
     @Autowired
     private UserService userService;
     @Autowired

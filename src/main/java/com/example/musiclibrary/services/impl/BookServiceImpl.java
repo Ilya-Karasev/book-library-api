@@ -9,6 +9,7 @@ import com.example.musiclibrary.rabbitmq.*;
 import com.example.musiclibrary.repositories.BookRepository;
 import com.example.musiclibrary.repositories.UserRepository;
 import com.example.musiclibrary.services.BookService;
+import net.devh.boot.grpc.server.service.GrpcService;
 import org.modelmapper.ModelMapper;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,9 +17,9 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 @Service
+@GrpcService
 public class BookServiceImpl implements BookService {
     @Autowired
     private UserRepository userRepository;

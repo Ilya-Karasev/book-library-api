@@ -19,7 +19,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-public class RentalController implements RentalApi {
+public class RentalController {
     @Autowired
     private UserService userService;
     @Autowired

@@ -21,7 +21,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-public class ReservationController implements ReservationApi {
+public class ReservationController {
     @Autowired
     private UserService userService;
     @Autowired
