@@ -1,9 +1,7 @@
-package com.example.musiclibrary.datafetchers;
+package com.example.musiclibrary.controllers;
 
-import com.example.musiclibrary.datafetchers.records.SubmittedRental;
 import com.example.musiclibrary.dtos.RentalDto;
 import com.example.musiclibrary.dtos.show.RentalShow;
-import com.netflix.graphql.dgs.InputArgument;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -24,19 +22,24 @@ import java.util.UUID;
         @ApiResponse(responseCode = "404", description = "Ресурс не найден"),
         @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
 })
-public interface RentalFetcherApi {
+public interface RentalApi {
     @Operation(summary = "Получить список всех аренд")
-    List<RentalShow> getAllRentals() throws InterruptedException;
+    @GetMapping(value = "/rentals", produces = MediaType.APPLICATION_JSON_VALUE)
+    ResponseEntity<List<RentalShow>> all() throws Throwable;
 
     @Operation(summary = "Создать новую аренду")
-    RentalDto addRental(@InputArgument SubmittedRental input) throws InterruptedException;
+    @PostMapping(value = "/rentals/add", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    ResponseEntity<RentalShow> newRental(@Valid @RequestBody RentalDto newRental) throws Throwable;
 
     @Operation(summary = "Получить информацию об аренде по ID")
-    RentalDto getRental(@InputArgument String id) throws InterruptedException;
+    @GetMapping(value = "/rentals/info/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
+    ResponseEntity<RentalShow> findRental(@PathVariable("id") UUID id) throws Throwable;
 
     @Operation(summary = "Редактировать аренду по ID")
-    RentalDto editRental(@InputArgument String id, @Valid @InputArgument SubmittedRental input) throws InterruptedException;
+    @PutMapping(value = "/rentals/edit/{id}", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    ResponseEntity<RentalShow> editRental(@PathVariable("id") UUID id, @Valid @RequestBody RentalDto rental) throws Throwable;
 
     @Operation(summary = "Удалить аренду по ID")
-    String deleteRental(@InputArgument String id) throws InterruptedException;
+    @DeleteMapping(value = "/rentals/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
+    Link deleteRental(@PathVariable("id") UUID id) throws Throwable;
 }

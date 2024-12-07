@@ -1,10 +1,9 @@
 package com.example.musiclibrary.dtos;
-import jakarta.validation.constraints.*;
-import org.springframework.hateoas.RepresentationModel;
+
+import jakarta.validation.constraints.NotNull;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 public class UserDto {
